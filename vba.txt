@@ -1,0 +1,722 @@
+Function CS(rng As Double, number As Integer) As Double
+If (rng * 10 ^ (number + 1)) Mod 20 = 5 Then
+        CS = Int(rng * (10 ^ number)) / (10 ^ number)
+    Else
+        CS = Application.Round(rng, number)
+    End If
+End Function
+
+
+
+Sub yy()
+Dim rng1 As Variant
+K1 = Sheets(1).Range("A65536").End(xlUp).Row
+T0 = Sheets(1).Cells(3, 3)
+T1 = Sheets(1).Cells(K1, 3)
+K0 = 2
+    For i = 3 To K1
+        If T0 = Sheets(1).Cells(i, 3) Then
+            K0 = K0 + 1
+        End If
+        If K0 <> i Then
+            Exit For
+        End If
+    Next
+
+   junzhi (K0)
+
+    rng1 = Sheets(2).Range("A25").Resize(10, 7).Value
+    rng2 = Sheets(3).Range("C5").Resize(10, 7).Value
+    rng3 = Sheets(3).Range("C17").Resize(10, 7).Value
+    
+    Sheets(3).Cells(3, 3) = "管城区办事处日空气质量考核排名（" & Month(T0) & "月" & Day(T0) & "日)"
+    Sheets(3).Range("C5").Resize(10, 7) = rng1
+    Sheets(3).Range("C5").Resize(10, 7).Sort Range("I5"), xlAscending
+    
+    
+If T0 = T1 Then
+    Sheets(3).Range("C3").Resize(12, 7).Select
+Else
+    junzhi (K1)
+    Sheets(3).Range("C17").Resize(10, 7) = rng1
+    Sheets(3).Range("C17").Resize(10, 7).Sort Range("I17"), xlAscending
+    If Month(T0) = Month(T1) Then
+        Sheets(3).Cells(15, 3) = "管城区办事处周空气质量考核排名（" & Month(T0) & "月" & Day(T1) & "日-" & Day(T0) & "日)"
+    Else
+        Sheets(3).Cells(15, 3) = "管城区办事处周空气质量考核排名（" & Month(T1) & "月" & Day(T1) & "日-" & Month(T0) & "月" & Day(T0) & "日)"
+    End If
+    Sheets(3).Range("C3").Resize(24, 7).Select
+End If
+If 1 = (MsgBox("是否输出数据", vbOKCancel, "提示")) Then
+    Call shengcheng
+End If
+
+
+End Sub
+Function junzhi(s As Integer)
+'主要是计算sheet2表中微站均值
+Dim i, j As Integer
+    For i = 2 To 19
+         pm25 = 0
+         pm10 = 0
+         k = 0
+        For j = 3 To s
+           
+            If Sheets(2).Cells(i, 2).Value = Sheets(1).Cells(j, 2).Value Then
+                If Sheets(1).Cells(j, 6) <> 0 And Sheets(1).Cells(j, 7) <> 0 Then
+                    pm10 = pm10 + Sheets(1).Cells(j, 6)
+                    pm25 = pm25 + Sheets(1).Cells(j, 7)
+                    k = k + 1
+                End If
+            End If
+    
+        Next
+        If k > 0 Then
+            Sheets(2).Cells(i, 3) = pm25 / k
+            Sheets(2).Cells(i, 5) = pm10 / k
+        Else
+            Sheets(2).Cells(i, 5) = ""
+            Sheets(2).Cells(i, 3) = ""
+        End If
+    Next
+    Call fuzhi
+End Function
+Sub fuzhi()
+'将表2微站值赋予表2办事处汇总
+    For i = 25 To 34
+        For j = 2 To 19
+            If Sheets(2).Cells(i, 1).Value = Sheets(2).Cells(j, 1).Value Then
+                 Sheets(2).Cells(i, 2) = Sheets(2).Cells(j, 6)
+                 Sheets(2).Cells(i, 4) = Sheets(2).Cells(j, 4)
+            End If
+        Next
+    Next
+    Call paiming
+End Sub
+Sub paiming()
+'计算表2排名得分
+    For i = 25 To 34
+        Sheets(2).Cells(i, 3) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 2), Sheets(2).Range("b25:b34"), 1)
+        Sheets(2).Cells(i, 5) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 4), Sheets(2).Range("d25:d34"), 1)
+    Next
+
+    For l = 2 To 4 Step 2
+        For k = 25 To 34
+            For j = 25 To 34
+                If Sheets(2).Cells(j, l) = Sheets(2).Cells(k, l) Then
+                    If l = 2 Then
+                        If Sheets(2).Cells(j, 4) > Sheets(2).Cells(k, 4) Then
+                            Sheets(2).Cells(j, 3) = Sheets(2).Cells(j, 3) + 1
+                        End If
+                    Else
+                        If Sheets(2).Cells(j, 2) > Sheets(2).Cells(k, 2) Then
+                            Sheets(2).Cells(j, 5) = Sheets(2).Cells(j, 5) + 1
+                        End If
+                    End If
+                End If
+            Next
+        Sheets(2).Cells(k, 6) = Sheets(2).Cells(k, 3) * 0.6 + Sheets(2).Cells(k, 5) * 0.4
+        Next
+    Next
+    
+    For i = 25 To 34
+        Sheets(2).Cells(i, 7) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 6), Sheets(2).Range("F25:F34"), 1)
+    Next
+'    Range("A2:G11").Sort Range("G2"), xlAscending
+End Sub
+Sub shengcheng()
+s = ThisWorkbook.Path
+Workbooks.Add
+
+ActiveWorkbook.Sheets(1).Range("B3:B12,D3:D12,F3:F12,B15:B24,D15:D24,F15:F24").Select
+Selection.NumberFormatLocal = "0.0_ "
+
+ActiveWorkbook.Sheets(1).Range("A1").Resize(24, 7) = ThisWorkbook.Sheets(3).Range("C3").Resize(24, 7).Value
+
+ActiveWorkbook.Sheets(1).Columns("A:A").Select
+    With Selection
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .RowHeight = 20
+        .ColumnWidth = 21
+    End With
+ActiveWorkbook.Sheets(1).Columns("B:G").Select
+    With Selection
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .ColumnWidth = 10
+    End With
+ActiveWorkbook.Sheets(1).Range("A2:G2,A14:G14,G3:G12,G15:G24").Select
+    With Selection.Font
+        .Name = "仿宋"
+        .Name = "Times New Roman"
+        .Size = 12
+        .Bold = True
+    End With
+ActiveWorkbook.Sheets(1).Range("A3:F12,A15:F24").Select
+    With Selection.Font
+        .Name = "仿宋"
+        .Name = "Times New Roman"
+        .Size = 12
+    End With
+ActiveWorkbook.Sheets(1).Range("A1:G1,A13:G13").Select
+    With Selection.Font
+        .Name = "仿宋"
+        .Name = "Times New Roman"
+        .Size = 14
+        .Bold = True
+    End With
+    Selection.Merge
+With Range("A1:G24").Borders
+    .LineStyle = xlContinuous
+    .Weight = xlThin
+End With
+
+ActiveWorkbook.SaveAs Filename:=s & "/" & ThisWorkbook.Sheets(3).Range("C3") & ".xlsx"
+ActiveWorkbook.Close
+End Sub
+
+
+Sub shishi()
+Dim a, b As Integer
+Dim str As String
+Dim arr1, arr2 As Variant
+str = Range("A1")
+arr1 = Split(str, "至")
+arr2 = Split(arr1(1), "空")
+a = Year(arr1(0))
+b = Day(arr1(0))
+End Sub
+Sub bvbvb()
+Dim str As String
+
+'Dim arr1, arr2 As Variant
+'str = Range("A36")
+'arr1 = Split(str, "(")
+'Range("b36") = arr1(0)
+    Range(Cells(24, 13), Cells(33, 19)) = Range(Cells(25, 1), Cells(34, 7))
+End Sub
+
+
+
+/////
+Sub yy()
+Dim rng1 As Variant
+K1 = Sheets(1).Range("A65536").End(xlUp).Row
+T0 = Sheets(1).Cells(3, 3)
+T1 = Sheets(1).Cells(K1, 3)
+K0 = 2
+    For i = 3 To K1
+        If T0 = Sheets(1).Cells(i, 3) Then
+            K0 = K0 + 1
+        End If
+        If K0 <> i Then
+            Exit For
+        End If
+    Next
+
+   junzhi (K0)
+   
+    With Sheets(3).Range("C3:I26").Font
+        .ColorIndex = xlAutomatic
+        .TintAndShade = 0
+    End With
+    
+    Sheets(3).Cells(3, 3) = "管城区办事处日空气质量考核排名（" & Month(T0) & "月" & Day(T0) & "日）"
+    Sheets(3).Range("C5").Resize(10, 7) = Sheets(2).Range("A25").Resize(10, 7).Value
+    Sheets(3).Range("C5").Resize(10, 7).Sort Range("I5"), xlAscending
+    Call biaohong(14)
+
+If T0 = T1 Then
+    Sheets(3).Range("C3").Resize(12, 7).Select
+Else
+    junzhi (K1)
+    Sheets(3).Range("C17").Resize(10, 7) = Sheets(2).Range("A25").Resize(10, 7).Value
+    Sheets(3).Range("C17").Resize(10, 7).Sort Range("I17"), xlAscending
+    Call biaohong(26)
+    If Month(T0) = Month(T1) Then
+        Sheets(3).Cells(15, 3) = "管城区办事处周空气质量考核排名（" & Month(T0) & "月" & Day(T1) & "日-" & Day(T0) & "日）"
+    Else
+        Sheets(3).Cells(15, 3) = "管城区办事处周空气质量考核排名（" & Month(T1) & "月" & Day(T1) & "日-" & Month(T0) & "月" & Day(T0) & "日）"
+    End If
+    Sheets(3).Range("C3").Resize(24, 7).Select
+End If
+If 1 = (MsgBox("是否输出数据", vbOKCancel, "提示")) Then
+    Call shengcheng
+End If
+
+
+
+tou = "【管城区城区组办事处空气质量考核情况通报】" & Chr(10) & "    根据《管城区街道办事处环境空气质量考核办法》文件要求，" & _
+    "对全区12个街道办事处及金岱产业集聚区管委会进行分组考核，" & _
+    "其中城区组10个街道办事处依据微型空气质量监测站点 PM10、PM2.5监测数据作为考核指标，现对城区组考核情况通报如下："
+rfen = Chr(10) & "    一、昨" & Split(Sheets(3).Cells(3, 3), "处")(1) & "：" & Sheets(3).Range("C5").Value & "得分" & Format(Sheets(3).Range("H5").Value, "###0.0") & "，排名第1；" & _
+Sheets(3).Range("C6").Value & "得分" & Format(Sheets(3).Range("H6").Value, "###0.0") & "，排名第2。" & Sheets(3).Range("C14").Value & "得分" & Format(Sheets(3).Range("H14").Value, "###0.0") & "，排名倒1；" & Sheets(3).Range("C13").Value & "得分" & Format(Sheets(3).Range("H13").Value, "###0.0") & "，排名倒2。"
+zfen = Chr(10) & "    二、本" & Split(Sheets(3).Cells(15, 3), "处")(1) & "：" & Sheets(3).Range("C17").Value & "得分" & Format(Sheets(3).Range("H17").Value, "###0.0") & "，排名第1；" & _
+Sheets(3).Range("C18").Value & "得分" & Format(Sheets(3).Range("H18").Value, "###0.0") & "，排名第2。" & Sheets(3).Range("C26").Value & "得分" & Format(Sheets(3).Range("H26").Value, "###0.0") & "，排名倒1；" & Sheets(3).Range("C25").Value & "得分" & Format(Sheets(3).Range("H25").Value, "###0.0") & "，排名倒2。"
+jie = Chr(10) & "（备注：以上数据未经审核仅供参考）"
+Sheets(3).Range("K3") = tou + rfen + zfen + jie
+
+Worksheets("sheet1").Cells.ClearContents
+
+End Sub
+Function junzhi(s As Integer)
+'主要是计算sheet2表中微站均值
+Dim i, j As Integer
+    For i = 2 To 19
+         pm25 = 0
+         pm10 = 0
+         k = 0
+        For j = 3 To s
+           
+            If Sheets(2).Cells(i, 2).Value = Sheets(1).Cells(j, 2).Value Then
+                If Sheets(1).Cells(j, 6) <> 0 And Sheets(1).Cells(j, 7) <> 0 Then
+                    pm10 = pm10 + Sheets(1).Cells(j, 6)
+                    pm25 = pm25 + Sheets(1).Cells(j, 7)
+                    k = k + 1
+                End If
+            End If
+    
+        Next
+        If k > 0 Then
+            Sheets(2).Cells(i, 3) = pm25 / k
+            Sheets(2).Cells(i, 5) = pm10 / k
+        Else
+            Sheets(2).Cells(i, 5) = ""
+            Sheets(2).Cells(i, 3) = ""
+        End If
+    Next
+    Call fuzhi
+End Function
+Sub fuzhi()
+'将表2微站值赋予表2办事处汇总
+    For i = 25 To 34
+        For j = 2 To 19
+            If Sheets(2).Cells(i, 1).Value = Sheets(2).Cells(j, 1).Value Then
+                 Sheets(2).Cells(i, 2) = Sheets(2).Cells(j, 6)
+                 Sheets(2).Cells(i, 4) = Sheets(2).Cells(j, 4)
+            End If
+        Next
+    Next
+    Call paiming
+End Sub
+Sub paiming()
+'计算表2排名得分
+    For i = 25 To 34
+        Sheets(2).Cells(i, 3) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 2), Sheets(2).Range("b25:b34"), 1)
+        Sheets(2).Cells(i, 5) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 4), Sheets(2).Range("d25:d34"), 1)
+    Next
+
+    For l = 2 To 4 Step 2
+        For k = 25 To 34
+            For j = 25 To 34
+                If Sheets(2).Cells(j, l) = Sheets(2).Cells(k, l) Then
+                    If l = 2 Then
+                        If Sheets(2).Cells(j, 4) > Sheets(2).Cells(k, 4) Then
+                            Sheets(2).Cells(j, 3) = Sheets(2).Cells(j, 3) + 1
+                        End If
+                    Else
+                        If Sheets(2).Cells(j, 2) > Sheets(2).Cells(k, 2) Then
+                            Sheets(2).Cells(j, 5) = Sheets(2).Cells(j, 5) + 1
+                        End If
+                    End If
+                End If
+            Next
+        Sheets(2).Cells(k, 6) = Sheets(2).Cells(k, 3) * 0.6 + Sheets(2).Cells(k, 5) * 0.4
+        Next
+    Next
+    
+    For i = 25 To 34
+        Sheets(2).Cells(i, 7) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 6), Sheets(2).Range("F25:F34"), 1)
+    Next
+'    Range("A2:G11").Sort Range("G2"), xlAscending
+End Sub
+Sub shengcheng()
+s = ThisWorkbook.Path
+Workbooks.Add
+
+'ActiveWorkbook.Sheets(1).Range("B3:B12,D3:D12,F3:F12,B15:B24,D15:D24,F15:F24").NumberFormatLocal = "0.0_ "
+'ActiveWorkbook.Sheets(1).Range("A1").Resize(24, 7) = ThisWorkbook.Sheets(3).Range("C3").Resize(24, 7).Value
+
+With ActiveWorkbook.Sheets(1).Columns("A:A")
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .RowHeight = 20
+        .ColumnWidth = 21
+    End With
+With ActiveWorkbook.Sheets(1).Columns("B:G")
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .ColumnWidth = 10
+    End With
+    
+'With ActiveWorkbook.Sheets(1).Range("A2:G2,A14:G14,G3:G12,G15:G24").Font
+'        .Name = "仿宋"
+'        .Name = "Times New Roman"
+'        .Size = 12
+'        .Bold = True
+'    End With
+'With ActiveWorkbook.Sheets(1).Range("A3:F12,A15:F24").Font
+'        .Name = "仿宋"
+'        .Name = "Times New Roman"
+'        .Size = 12
+'    End With
+'With ActiveWorkbook.Sheets(1).Range("A1:G1,A13:G13")
+'        .Font.Name = "仿宋"
+'        .Font.Name = "Times New Roman"
+'        .Font.Size = 14
+'        .Font.Bold = True
+'        .Merge
+'    End With
+'With ActiveWorkbook.Sheets(1).Range("A1:G24").Borders
+'    .LineStyle = xlContinuous
+'    .Weight = xlThin
+'End With
+ThisWorkbook.Sheets(3).Range("C3").Resize(24, 7).Copy
+ActiveSheet.Paste
+ActiveWorkbook.SaveAs Filename:=s & "/" & ThisWorkbook.Sheets(3).Range("C3") & "-" & Format(Now, "yyyymmddhh") & ".xlsx"
+ActiveWorkbook.Close
+End Sub
+Sub biaohong(k As Integer)
+        l = 0
+            For f = k - 2 To k - 9 Step -1
+                If Sheets(3).Cells(k - 1, 9).Value = Cells(f, 9) Then
+                    l = l + 1
+                End If
+            Next
+
+        With Sheets(3).Range(Cells(k - 1 - l, 3), Cells(k, 9)).Font
+                .Color = -16776961
+                .TintAndShade = 0
+            End With
+End Sub
+
+
+///////////////////////////////////////
+
+
+Sub weizhan()
+S = ActiveWorkbook.Name
+k = Sheets(1).Range("A65536").End(xlUp).Row
+For j = 4 To 8
+    For i = 3 To k
+        Cells(i, j) = Val(Cells(i, j))
+    Next
+Next
+Workbooks.Open "D:\管城专家组\个人\微站模板-v2.0.xlsm"
+'Sheets("原始数据（复制）").Select
+'       ThisWorkbook.Sheets(1).Range("A1:M38").Copy
+'    Windows("微站模板-v2.0.xlsm").Activate
+'    ActiveSheet.Paste
+    
+    
+
+    Sheets("原始数据（复制）").Select
+    Windows(S).Activate
+    Range("A1:M" & k).Select
+    Application.CutCopyMode = False
+    Selection.Copy
+    Windows("微站模板-v2.0.xlsm").Activate
+    Range("A1:M1").Select
+    ActiveSheet.Paste
+    
+    Application.WindowState = xlNormal
+    Windows("微站模板-v2.0.xlsm").Activate
+    Application.Run "'微站模板-v2.0.xlsm'!yy"
+      
+ Workbooks(S).Close savechanges:=True
+   
+    
+End Sub
+
+----------------------------------------------------------
+Sub yy()
+Dim rng1 As Variant
+Call shanchu
+K1 = Sheets(1).Range("A65536").End(xlUp).Row
+T0 = Sheets(1).Cells(3, 3)
+T1 = Sheets(1).Cells(K1, 3)
+K0 = 2
+    For i = 3 To K1
+        If T0 = Sheets(1).Cells(i, 3) Then
+            K0 = K0 + 1
+        End If
+        If K0 <> i Then
+            Exit For
+        End If
+    Next
+
+   junzhi (K0)
+   
+    With Sheets(3).Range("C3:I26").Font
+        .ColorIndex = xlAutomatic
+        .TintAndShade = 0
+    End With
+    
+   ThisWorkbook.Sheets(3).Select
+    Sheets(3).Cells(3, 3) = "管城区办事处日空气质量考核排名（" & Month(T0) & "月" & Day(T0) & "日）"
+    Sheets(3).Range("C5").Resize(10, 7) = Sheets(2).Range("A25").Resize(10, 7).Value
+    Sheets(3).Range("C5:I14").Sort [I5], xlAscending
+    Call biaohong(14)
+
+If T0 = T1 Then
+    Sheets(3).Range("C3").Resize(12, 7).Select
+Else
+    junzhi (K1)
+    Sheets(3).Range("C17").Resize(10, 7) = Sheets(2).Range("A25").Resize(10, 7).Value
+    Sheets(3).Range("C17").Resize(10, 7).Sort Range("I17"), xlAscending
+    Call biaohong(26)
+    If Month(T0) = Month(T1) Then
+        Sheets(3).Cells(15, 3) = "管城区办事处周空气质量考核排名（" & Month(T0) & "月" & Day(T1) & "日-" & Day(T0) & "日）"
+    Else
+        Sheets(3).Cells(15, 3) = "管城区办事处周空气质量考核排名（" & Month(T1) & "月" & Day(T1) & "日-" & Month(T0) & "月" & Day(T0) & "日）"
+    End If
+    Sheets(3).Range("C3").Resize(24, 7).Select
+End If
+If 1 = (MsgBox("是否输出数据", vbOKCancel, "提示")) Then
+    Call shengcheng
+End If
+
+
+
+tou = "【管城区城区组办事处空气质量考核情况通报】" & Chr(10) & "    根据《管城区街道办事处环境空气质量考核办法》文件要求，" & _
+    "对全区12个街道办事处及金岱产业集聚区管委会进行分组考核，" & _
+    "其中城区组10个街道办事处依据微型空气质量监测站点 PM10、PM2.5监测数据作为考核指标，现对城区组考核情况通报如下："
+rfen = Chr(10) & "    一、昨" & Split(Sheets(3).Cells(3, 3), "处")(1) & "：" & Sheets(3).Range("C5").Value & "得分" & Format(Sheets(3).Range("H5").Value, "###0.0") & "，排名第1；" & _
+Sheets(3).Range("C6").Value & "得分" & Format(Sheets(3).Range("H6").Value, "###0.0") & "，排名第2。" & Sheets(3).Range("C14").Value & "得分" & Format(Sheets(3).Range("H14").Value, "###0.0") & "，排名倒1；" & Sheets(3).Range("C13").Value & "得分" & Format(Sheets(3).Range("H13").Value, "###0.0") & "，排名倒2。"
+zfen = Chr(10) & "    二、本" & Split(Sheets(3).Cells(15, 3), "处")(1) & "：" & Sheets(3).Range("C17").Value & "得分" & Format(Sheets(3).Range("H17").Value, "###0.0") & "，排名第1；" & _
+Sheets(3).Range("C18").Value & "得分" & Format(Sheets(3).Range("H18").Value, "###0.0") & "，排名第2。" & Sheets(3).Range("C26").Value & "得分" & Format(Sheets(3).Range("H26").Value, "###0.0") & "，排名倒1；" & Sheets(3).Range("C25").Value & "得分" & Format(Sheets(3).Range("H25").Value, "###0.0") & "，排名倒2。"
+jie = Chr(10) & "（备注：以上数据未经审核仅供参考）"
+Sheets(3).Range("K3") = tou + rfen + zfen + jie
+
+Sheets(1).Cells.ClearContents
+
+End Sub
+Function junzhi(s As Integer)
+'主要是计算sheet2表中微站均值
+Dim i, j As Integer
+    For i = 2 To 19
+         pm25 = 0
+         pm10 = 0
+         k = 0
+        For j = 3 To s
+           
+            If Sheets(2).Cells(i, 2).Value = Sheets(1).Cells(j, 2).Value Then
+                If Sheets(1).Cells(j, 6) <> 0 And Sheets(1).Cells(j, 7) <> 0 Then
+                    pm10 = pm10 + Sheets(1).Cells(j, 6)
+                    pm25 = pm25 + Sheets(1).Cells(j, 7)
+                    k = k + 1
+                End If
+            End If
+    
+        Next
+        If k > 0 Then
+            Sheets(2).Cells(i, 3) = pm25 / k
+            Sheets(2).Cells(i, 5) = pm10 / k
+        Else
+            Sheets(2).Cells(i, 5) = ""
+            Sheets(2).Cells(i, 3) = ""
+        End If
+    Next
+    Call fuzhi
+End Function
+Sub fuzhi()
+'将表2微站值赋予表2办事处汇总
+    For i = 25 To 34
+        For j = 2 To 19
+            If Sheets(2).Cells(i, 1).Value = Sheets(2).Cells(j, 1).Value Then
+                 Sheets(2).Cells(i, 2) = Sheets(2).Cells(j, 6)
+                 Sheets(2).Cells(i, 4) = Sheets(2).Cells(j, 4)
+            End If
+        Next
+    Next
+    Call paiming
+End Sub
+Sub paiming()
+'计算表2排名得分
+    For i = 25 To 34
+        Sheets(2).Cells(i, 3) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 2), Sheets(2).Range("b25:b34"), 1)
+        Sheets(2).Cells(i, 5) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 4), Sheets(2).Range("d25:d34"), 1)
+    Next
+
+    For l = 2 To 4 Step 2
+        For k = 25 To 34
+            For j = 25 To 34
+                If Sheets(2).Cells(j, l) = Sheets(2).Cells(k, l) Then
+                    If l = 2 Then
+                        If Sheets(2).Cells(j, 4) > Sheets(2).Cells(k, 4) Then
+                            Sheets(2).Cells(j, 3) = Sheets(2).Cells(j, 3) + 1
+                        End If
+                    Else
+                        If Sheets(2).Cells(j, 2) > Sheets(2).Cells(k, 2) Then
+                            Sheets(2).Cells(j, 5) = Sheets(2).Cells(j, 5) + 1
+                        End If
+                    End If
+                End If
+            Next
+        Sheets(2).Cells(k, 6) = Sheets(2).Cells(k, 3) * 0.6 + Sheets(2).Cells(k, 5) * 0.4
+        Next
+    Next
+    
+    For i = 25 To 34
+        Sheets(2).Cells(i, 7) = Application.WorksheetFunction.Rank(Sheets(2).Cells(i, 6), Sheets(2).Range("F25:F34"), 1)
+    Next
+'   Range("A2:G11").Sort Range("G2"), xlAscending
+End Sub
+Sub shengcheng()
+s = ThisWorkbook.Path
+Workbooks.Add
+
+'ActiveWorkbook.Sheets(1).Range("B3:B12,D3:D12,F3:F12,B15:B24,D15:D24,F15:F24").NumberFormatLocal = "0.0_ "
+'ActiveWorkbook.Sheets(1).Range("A1").Resize(24, 7) = ThisWorkbook.Sheets(3).Range("C3").Resize(24, 7).Value
+
+With ActiveWorkbook.Sheets(1).Columns("A:A")
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .RowHeight = 20
+        .ColumnWidth = 21
+    End With
+With ActiveWorkbook.Sheets(1).Columns("B:G")
+        .HorizontalAlignment = xlCenter
+        .VerticalAlignment = xlCenter
+        .ColumnWidth = 10
+    End With
+    
+'With ActiveWorkbook.Sheets(1).Range("A2:G2,A14:G14,G3:G12,G15:G24").Font
+'        .Name = "仿宋"
+'        .Name = "Times New Roman"
+'        .Size = 12
+'        .Bold = True
+'    End With
+'With ActiveWorkbook.Sheets(1).Range("A3:F12,A15:F24").Font
+'        .Name = "仿宋"
+'        .Name = "Times New Roman"
+'        .Size = 12
+'    End With
+'With ActiveWorkbook.Sheets(1).Range("A1:G1,A13:G13")
+'        .Font.Name = "仿宋"
+'        .Font.Name = "Times New Roman"
+'        .Font.Size = 14
+'        .Font.Bold = True
+'        .Merge
+'    End With
+'With ActiveWorkbook.Sheets(1).Range("A1:G24").Borders
+'    .LineStyle = xlContinuous
+'    .Weight = xlThin
+'End With
+ThisWorkbook.Sheets(3).Range("C3").Resize(24, 7).Copy
+ActiveSheet.Paste
+ActiveWorkbook.SaveAs Filename:="C:\Users\Huanbaojun\Desktop\" & ThisWorkbook.Sheets(3).Range("C3") & "-" & Format(Now, "yyyymmddhhmmss") & ".xlsx"
+ActiveWorkbook.Close
+End Sub
+Sub biaohong(k As Integer)
+        l = 0
+            For f = k - 2 To k - 9 Step -1
+                If Sheets(3).Cells(k - 1, 9).Value = Cells(f, 9) Then
+                    l = l + 1
+                End If
+            Next
+
+        With Sheets(3).Range(Cells(k - 1 - l, 3), Cells(k, 9)).Font
+                .Color = -16776961
+                .TintAndShade = 0
+            End With
+End Sub
+Sub shanchu()
+For i = 6 To 7
+    For j = Sheets(1).Range("A65536").End(xlUp).Row To 3 Step -1
+        If Sheets(1).Cells(j, i) = 0 Then
+            MsgBox Sheets(1).Cells(j, 2) & Month(Sheets(1).Cells(j, 3)) & "月" & Day(Sheets(1).Cells(j, 3)) & "日的" & Sheets(1).Cells(2, i) & "为0，已删除", vbOKOnly, "提示"
+            Sheets(1).Rows(j).Delete shift:=xlUp
+        ElseIf Sheets(1).Cells(j, i) = "" Then
+            MsgBox Sheets(1).Cells(j, 2) & Month(Sheets(1).Cells(j, 3)) & "月" & Day(Sheets(1).Cells(j, 3)) & "日的" & Sheets(1).Cells(2, i) & "无数据，已删除", vbOKOnly, "提示"
+            Sheets(1).Rows(j).Delete shift:=xlUp
+        End If
+    Next
+Next
+
+End Sub
+
+
+------------------------------------------------------------
+
+
+
+
+Sub guokong()
+Dim arr1, arr2 As Variant
+Dim i1, i2, j1, j2, k1, k2 As Integer
+'Da = Format(Sheets(1).Cells(2, 3), "yyyy/mm/dd")
+
+Z1 = Sheets(1).Range("A65536").End(xlUp).Row
+'Z2 = Sheets(2).Range("A65536").End(xlUp).Row
+'Da = DateValue(Sheets(1).Cells(2, 3))
+arr1 = Array("烟厂", "供水公司", "市监测站", "经开区管委", "四十七中", "河医大", "岗李水库(对照点)", "jinshui", "郑纺机", "银行学校")
+arr2 = Array("站点名称", "时间", "SO2", "NO2", "PM10", "CO(mg/m3)", "O3_8h", "PM2.5", "AQI")
+
+
+'删除无用数据
+For i = Sheets(1).Range("AK1").End(xlToLeft).Column To 1 Step -1
+    k = 0
+    For Each n In arr2
+        If Sheets(1).Cells(1, i) <> n Then
+            k = k + 1
+        End If
+        If k > 8 Then
+            Sheets(1).Columns(i).Delete
+        End If
+    Next
+Next
+
+'转置数据
+Sheets(1).Rows(Z1 + 1).Delete
+For j = 0 To 9
+    For i = 2 To Sheets(1).Range("A65536").End(xlUp).Row
+    
+        Sheets(1).Cells(Z1 + 1, j * 8 + 1) = Format(Sheets(1).Cells(2, 2), "yyyy/mm/dd")
+        
+        If Sheets(1).Cells(i, 1) = arr1(j) Then
+            Sheets(1).Cells(Z1 + 1, j * 8 + 2).Resize(1, 7) = Sheets(1).Cells(i, 3).Resize(1, 7).Value
+            Exit For
+        Else
+            Sheets(1).Cells(Z1 + 1, j * 8 + 2).Resize(1, 7) = ""
+        End If
+    Next
+Next
+Sheets(1).Range(Cells(Z1 + 1, 1), Cells(Z1 + 1, 80)).Select
+
+'
+'For k1 = 0 To 9
+'    For t = 3 To Z2
+'        For k2 = 2 To Z1
+'            If arr1(k1) = Sheets(1).Cells(k2, 2).Value Then
+'                If DateValue(Sheets(1).Cells(2, 3)) = Sheets(2).Cells(344, 1) Then
+'
+'                End If
+'            End If
+'        Next
+'   Next
+'Next
+'
+'
+'
+'If Da = Sheets(2).Cells(344, 1) Then 'Format(Sheets(2).Cells(344, 1), "yyyy/mm/dd") Then
+'    a = 1
+'Else
+'    a = 2
+'End If
+End Sub
+
+
+
+
+
+
+Function CS(rng As Double, number As Integer) As Double
+If (rng * 10 ^ (number + 1)) Mod 20 = 5 Then
+        CS = Int(rng * (10 ^ number)) / (10 ^ number)
+    Else
+        CS = Application.Round(rng, number)
+    End If
+
+
